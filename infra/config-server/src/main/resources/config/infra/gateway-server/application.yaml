@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: main_service_route
+          uri: lb://MAIN-SERVICE
+          predicates:
+            - Path=/admin/categories/**,/categories/**,/admin/comment/**,/events/{eventId}/comments/**,/admin/compilations/**,/compilations/**,/admin/events/**,/events/**,/admin/users/**,/users/{userId}/**,/users/{userId}/**,/users/{userId}/requests/**
+
+        - id: default_route
+          uri: http://localhost:8080
+          predicates:
+            - Path=/**
+          filters:
+            - SetStatus=404
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

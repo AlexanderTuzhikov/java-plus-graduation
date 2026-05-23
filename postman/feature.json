@@ -1,0 +1,253 @@
+{
+  "info": {
+    "_postman_id": "ewm-comments",
+    "name": "Feature: comments",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Основные операции и создание данных",
+      "item": [
+        {
+          "name": "Создание и проверка на соответствие",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const main = async () => {",
+                  "    const api = new API(pm); const rnd = new RandomUtils();",
+                  "    const user = await api.addUser(rnd.getUser());",
+                  "    const cat = await api.addCategory(rnd.getCategory());",
+                  "    let ev = await api.addEvent(user.id, rnd.getEvent(cat.id));",
+                  "    ev = await api.publishEvent(ev.id);",
+                  "    pm.collectionVariables.set('userId', user.id);",
+                  "    pm.collectionVariables.set('eventId', ev.id);",
+                  "    pm.request.body.update({ mode: 'raw', raw: JSON.stringify({ \"comment\": \"Standard valid comment text (10+)\" }) });",
+                  "};",
+                  "setTimeout(async () => { await main(); }, 50);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 201 Created\", () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.collectionVariables.set('commentId', res.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/event/{{eventId}}/comment", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "event", "{{eventId}}", "comment"] }
+          }
+        },
+        {
+          "name": "Обновление комментария (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\"comment\": \"Updated text that is long enough\"}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/comment/{{commentId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "comment", "{{commentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Валидация: Создание",
+      "item": [
+        {
+          "name": "1.1 Создание: короткий текст (<10)",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test(\"400\", () => pm.response.to.have.status(400));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\"comment\": \"Short\"}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/event/{{eventId}}/comment", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "event", "{{eventId}}", "comment"] }
+          }
+        },
+        {
+          "name": "1.2 Создание: длинный текст (>2000)",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test(\"400\", () => pm.response.to.have.status(400));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\"comment\": \"{{tooLong}}\"}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/event/{{eventId}}/comment", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "event", "{{eventId}}", "comment"] }
+          }
+        },
+        {
+          "name": "1.3 Создание: несуществующий пользователь",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test(\"404 Not Found\", () => pm.response.to.have.status(404));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\"comment\": \"Valid text for non-existing user\"}" },
+            "url": { "raw": "{{baseUrl}}/users/9999/event/{{eventId}}/comment", "host": ["{{baseUrl}}"], "path": ["users", "9999", "event", "{{eventId}}", "comment"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Валидация: Обновление и Удаление",
+      "item": [
+        {
+          "name": "2.1 Обновление: короткий текст (<10)",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test(\"400\", () => pm.response.to.have.status(400));"] } }],
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\"comment\": \"Short\"}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/comment/{{commentId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "comment", "{{commentId}}"] }
+          }
+        },
+        {
+          "name": "2.2 Обновление: длинный текст (>2000)",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test(\"400\", () => pm.response.to.have.status(400));"] } }],
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": { "mode": "raw", "raw": "{\"comment\": \"{{tooLong}}\"}" },
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}/comment/{{commentId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "comment", "{{commentId}}"] }
+          }
+        },
+        {
+          "name": "2.3 Удаление: чужой комментарий (Security check)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const main = async () => {",
+                  "    const api = new API(pm); const rnd = new RandomUtils();",
+                  "    const anotherUser = await api.addUser(rnd.getUser());",
+                  "    pm.collectionVariables.set('wrongUserId', anotherUser.id);",
+                  "};",
+                  "setTimeout(async () => { await main(); }, 50);"
+                ]
+              }
+            },
+            { "listen": "test", "script": { "exec": ["pm.test(\"409 Conflict - Not an author\", () => pm.response.to.have.status(409));"] } }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/users/{{wrongUserId}}/comment/{{commentId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{wrongUserId}}", "comment", "{{commentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Public: Продвинутая проверка",
+      "item": [
+        {
+          "name": "Проверка списка (Multi-author)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const main = async () => {",
+                  "    const api = new API(pm); const rnd = new RandomUtils();",
+                  "    const u1 = await api.addUser(rnd.getUser());",
+                  "    const u2 = await api.addUser(rnd.getUser());",
+                  "    const cat = await api.addCategory(rnd.getCategory());",
+                  "    let ev = await api.addEvent(u1.id, rnd.getEvent(cat.id));",
+                  "    ev = await api.publishEvent(ev.id);",
+                  "    const t1 = \"Unique comment by user 1 (valid length)\";",
+                  "    const t2 = \"Unique comment by user 2 (valid length)\";",
+                  "    const c1 = await api.addComment(u1.id, ev.id, { \"comment\": t1 });",
+                  "    const c2 = await api.addComment(u2.id, ev.id, { \"comment\": t2 });",
+                  "    await api.publishComment(c1.id);",
+                  "    await api.publishComment(c2.id);",
+                  "    pm.collectionVariables.set('targetEventId', ev.id);",
+                  "    pm.collectionVariables.set('exp1', t1);",
+                  "    pm.collectionVariables.set('exp2', t2);",
+                  "};",
+                  "setTimeout(async () => { await main(); }, 100);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "const all = list.map(c => c.comment);",
+                  "pm.test(\"Оба текста найдены\", () => {",
+                  "    pm.expect(all).to.include(pm.collectionVariables.get('exp1'));",
+                  "    pm.expect(all).to.include(pm.collectionVariables.get('exp2'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/events/{{targetEventId}}/comments", "host": ["{{baseUrl}}"], "path": ["events", "{{targetEventId}}", "comments"] }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.collectionVariables.set('tooLong', 'a'.repeat(2001));",
+          "API = class {",
+          "    constructor(postman) { this.pm = postman; this.baseUrl = pm.variables.get('baseUrl'); }",
+          "    async addUser(u) { return this.send('POST', '/admin/users', u); }",
+          "    async addCategory(c) { return this.send('POST', '/admin/categories', c); }",
+          "    async addEvent(uid, e) { return this.send('POST', `/users/${uid}/events`, e); }",
+          "    async publishEvent(eid) { return this.send('PATCH', `/admin/events/${eid}`, {stateAction: 'PUBLISH_EVENT'}); }",
+          "    async addComment(uid, eid, c) { return this.send('POST', `/users/${uid}/event/${eid}/comment`, c); }",
+          "    async publishComment(cid) { return this.send('PATCH', `/admin/comment/${cid}/publish`, {}); }",
+          "    send(method, path, body) {",
+          "        return new Promise((resolve, reject) => {",
+          "            this.pm.sendRequest({",
+          "                url: this.baseUrl + path, method, ",
+          "                header: {'Content-Type': 'application/json'},",
+          "                body: body ? JSON.stringify(body) : ''",
+          "            }, (err, res) => { if (err || (res.code >= 400 && !path.includes('comment'))) reject(err || res.text()); else resolve(res.json()); });",
+          "        });",
+          "    }",
+          "};",
+          "RandomUtils = class {",
+          "    getUser() { return { name: 'U'+Math.random().toString(36).substring(7), email: Math.random().toString(36).substring(7)+'@t.com' }; }",
+          "    getCategory() { return { name: 'C'+Math.random() }; }",
+          "    getEvent(catId) {",
+          "        return { annotation: '20 symbols min annotation', category: catId, description: '20 symbols min description', eventDate: require('moment')().add(1, 'days').format('YYYY-MM-DD HH:mm:ss'), location: { lat: 0, lon: 0 }, title: 'Event Title', paid: false, participantLimit: 0, requestModeration: false };",
+          "    }",
+          "};"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "userId", "value": "" },
+    { "key": "eventId", "value": "" },
+    { "key": "commentId", "value": "" },
+    { "key": "targetEventId", "value": "" },
+    { "key": "exp1", "value": "" },
+    { "key": "exp2", "value": "" },
+    { "key": "tooLong", "value": "" },
+    { "key": "wrongUserId", "value": "" }
+  ]
+}

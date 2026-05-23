@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: stat-svc-service
+  config:
+    import: "configserver:"
+  cloud:
+    config:
+      fail-fast: true
+      retry:
+        useRandomPolicy: true
+        max-interval: 6000
+      discovery:
+        enabled: true
+        service-id: config-server
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:9090/eureka/
+
+  instance:
+    prefer-ip-address: true
+    hostname: localhost

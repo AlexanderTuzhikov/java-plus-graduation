@@ -10,6 +10,8 @@ import ru.practicum.statservice.model.EndpointHit;
 import ru.practicum.statservice.repository.StatRepository;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -19,6 +21,9 @@ public class StatServiceImpl implements StatService {
     private final StatRepository repository;
     private final EndpointHitMapper mapper;
 
+    private static final DateTimeFormatter FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     @Override
     @Transactional
     public void saveHit(NewEndpointHitDto hitDto) {
@@ -27,22 +32,29 @@ public class StatServiceImpl implements StatService {
     }
 
     @Override
-    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris,
-                                       boolean unique) {
-        if (uris == null || uris.isEmpty()) {
+    public List<ViewStatsDto> getStats(String start, String end,
+                                       List<String> uris, boolean unique) {
 
-            if (unique) {
-                return repository.findUniqueHitsAll(start, end);
-            } else {
-                return repository.findAllHitsAll(start, end);
-            }
-        } else {
+        try {
+            LocalDateTime startTime = LocalDateTime.parse(start, FORMATTER);
+            LocalDateTime endTime = LocalDateTime.parse(end, FORMATTER);
 
-            if (unique) {
-                return repository.findUniqueHitsByUris(start, end, uris);
+            if (uris == null || uris.isEmpty()) {
+                if (unique) {
+                    return repository.findUniqueHitsAll(startTime, endTime);
+                } else {
+                    return repository.findAllHitsAll(startTime, endTime);
+                }
             } else {
-                return repository.findAllHitsByUris(start, end, uris);
+                if (unique) {
+                    return repository.findUniqueHitsByUris(startTime, endTime, uris);
+                } else {
+                    return repository.findAllHitsByUris(startTime, endTime, uris);
+                }
             }
+
+        } catch (Exception e) {
+            return Collections.emptyList();
         }
     }
 }

@@ -16,8 +16,7 @@ import java.util.function.Function;
 public class StatClient {
     private final Function<String, URI> uriFactory;
     private final RestClient restClient;
-    private static final DateTimeFormatter FORMATTER =
-            DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public StatClient(Function<String, URI> uriFactory) {
         this.uriFactory = uriFactory;
@@ -27,7 +26,7 @@ public class StatClient {
     public void saveHit(NewEndpointHitDto hitDto) {
         try {
             ResponseEntity<Void> response = restClient.post()
-                    .uri(uriFactory.apply("/hit"))
+                    .uri("/hit")
                     .body(hitDto)
                     .retrieve()
                     .toBodilessEntity();
@@ -46,23 +45,19 @@ public class StatClient {
             String startStr = start.format(FORMATTER);
             String endStr = end.format(FORMATTER);
 
-            URI uri = UriComponentsBuilder
-                    .fromUri(uriFactory.apply("/stats"))
-                    .queryParam("start", startStr)
-                    .queryParam("end", endStr)
-                    .queryParam("unique", unique)
-                    .build()
-                    .toUri();
-
-            if (uris != null && !uris.isEmpty()) {
-                uri = UriComponentsBuilder.fromUri(uri)
-                        .queryParam("uris", String.join(",", uris))
-                        .build()
-                        .toUri();
-            }
-
             ResponseEntity<ViewStatsDto[]> response = restClient.get()
-                    .uri(uri)
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/stats")
+                                .queryParam("start", startStr)
+                                .queryParam("end", endStr)
+                                .queryParam("unique", unique);
+
+                        if (uris != null && !uris.isEmpty()) {
+                            uriBuilder.queryParam("uris", String.join(",", uris));
+                        }
+
+                        return uriBuilder.build();
+                    })
                     .retrieve()
                     .toEntity(ViewStatsDto[].class);
 

@@ -1,6 +1,6 @@
 spring:
   application:
-    name: stat-svc-service
+    name: stats-client
   config:
     import: "configserver:"
   cloud:

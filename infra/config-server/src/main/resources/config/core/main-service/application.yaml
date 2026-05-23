@@ -2,7 +2,7 @@ server:
   port: 0
 
 stats-server:
-  service-id: STAT-SVC-SERVICE
+  service-id: STATS-SERVER
 
 logging:
   level:

@@ -16,8 +16,7 @@ import java.util.function.Function;
 public class StatClient {
     private final Function<String, URI> uriFactory;
     private final RestClient restClient;
-    private static final DateTimeFormatter FORMATTER =
-            DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public StatClient(Function<String, URI> uriFactory) {
         this.uriFactory = uriFactory;

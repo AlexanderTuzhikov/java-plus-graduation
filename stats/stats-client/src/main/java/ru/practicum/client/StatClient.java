@@ -1,5 +1,6 @@
 package ru.practicum.client;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -10,13 +11,15 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+@Slf4j
 public class StatClient {
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final Function<String, URI> uriFactory;
     private final RestClient restClient;
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public StatClient(Function<String, URI> uriFactory) {
         this.uriFactory = uriFactory;
@@ -32,15 +35,24 @@ public class StatClient {
                     .toBodilessEntity();
 
             if (response.getStatusCode().isError()) {
-                throw new RuntimeException("Failed to save hit: " + response.getStatusCode());
+                throw new RuntimeException(
+                        "Failed to save hit: " + response.getStatusCode()
+                );
             }
+
         } catch (Exception e) {
-            throw new RuntimeException("Error while saving hit to stats service", e);
+            log.error("Error calling Stat Client", e);
+            throw new RuntimeException(
+                    "Error while saving hit to stats service",
+                    e
+            );
         }
     }
 
-    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end,
-                                       List<String> uris, boolean unique) {
+    public List<ViewStatsDto> getStats(LocalDateTime start,
+                                       LocalDateTime end,
+                                       List<String> uris,
+                                       boolean unique) {
         try {
             String startStr = start.format(FORMATTER);
             String endStr = end.format(FORMATTER);
@@ -50,24 +62,34 @@ public class StatClient {
                     .queryParam("start", startStr)
                     .queryParam("end", endStr)
                     .queryParam("unique", unique)
+                    .queryParam(
+                            "uris",
+                            uris == null ? null : uris.toArray()
+                    )
                     .build()
+                    .encode()
                     .toUri();
 
-            if (uris != null && !uris.isEmpty()) {
-                uri = UriComponentsBuilder.fromUri(uri)
-                        .queryParam("uris", String.join(",", uris))
-                        .build()
-                        .toUri();
-            }
+            log.info("Stats request URI: {}", uri);
 
             ResponseEntity<ViewStatsDto[]> response = restClient.get()
                     .uri(uri)
                     .retrieve()
                     .toEntity(ViewStatsDto[].class);
 
-            return Arrays.asList(response.getBody() != null ? response.getBody() : new ViewStatsDto[0]);
+            ViewStatsDto[] body = response.getBody();
+
+            return body != null
+                    ? Arrays.asList(body)
+                    : Collections.emptyList();
+
         } catch (Exception e) {
-            throw new RuntimeException("Error while getting stats from stats service", e);
+            log.error("Error calling Stat Client", e);
+
+            throw new RuntimeException(
+                    "Error while getting stats from stats service",
+                    e
+            );
         }
     }
 }

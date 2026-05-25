@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.comment.dto.CommentShortDto;
@@ -21,21 +22,21 @@ public class PublicCommentController {
     private final CommentService commentService;
 
     @GetMapping
-    public List<CommentShortDto> getPublishedComments(
+    public ResponseEntity<List<CommentShortDto>> getPublishedComments(
             @PathVariable Long eventId,
             @RequestParam(defaultValue = "0") int from,
             @RequestParam(defaultValue = "10") int size) {
 
         Pageable pageable = PageRequest.of(from / size, size, Sort.by(Sort.Direction.DESC, "publishedOn"));
 
-        return commentService.getPublishedComments(eventId, pageable);
+        return ResponseEntity.ok().body(commentService.getPublishedComments(eventId, pageable));
     }
 
     @GetMapping("/{commentId}")
-    public CommentShortDto getPublishedComment(
+    public ResponseEntity<CommentShortDto> getPublishedComment(
             @PathVariable Long eventId,
             @PathVariable Long commentId) {
 
-        return commentService.getPublishedComment(eventId, commentId);
+        return ResponseEntity.ok().body(commentService.getPublishedComment(eventId, commentId));
     }
 }

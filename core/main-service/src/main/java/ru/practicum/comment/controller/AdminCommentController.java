@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.comment.dto.CommentFullDto;
@@ -33,20 +34,22 @@ public class AdminCommentController {
     }
 
     @PatchMapping("/{commentId}/reject")
-    public CommentFullDto rejectComment(
+    public ResponseEntity<CommentFullDto> rejectComment(
             @PathVariable Long commentId) {
-        return commentService.rejectComment(commentId);
+        return ResponseEntity.ok().body(commentService.rejectComment(commentId));
     }
 
     @DeleteMapping("/{commentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteCommentByAdmin(@PathVariable Long commentId) {
+    public ResponseEntity<Void> deleteCommentByAdmin(@PathVariable Long commentId) {
 
         commentService.deleteCommentByAdmin(commentId);
+
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping
-    public List<CommentFullDto> searchComments(
+    public ResponseEntity<List<CommentFullDto>> searchComments(
             @RequestParam(required = false) List<Long> userIds,
             @RequestParam(required = false) List<Long> eventIds,
             @RequestParam(required = false) List<CommentState> states,
@@ -64,6 +67,6 @@ public class AdminCommentController {
 
         Pageable pageable = PageRequest.of(from / size, size, Sort.by(Sort.Direction.DESC, "createdOn"));
 
-        return commentService.searchComments(filter, pageable);
+        return ResponseEntity.ok().body(commentService.searchComments(filter, pageable));
     }
 }

@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: main_service_route
+          uri: lb://MAIN-SERVICE
+          predicates:
+            - Path=/admin/categories/**,/categories/**,/admin/comment/**,/events/**,/admin/compilations/**,/compilations/**,/admin/events/**,/admin/users/**,/users/**
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: gateway,health,info

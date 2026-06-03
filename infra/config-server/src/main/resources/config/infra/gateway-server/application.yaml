@@ -4,11 +4,39 @@ server:
 spring:
   cloud:
     gateway:
+      discovery.locator.enabled: false
       routes:
-        - id: main_service_route
-          uri: lb://MAIN-SERVICE
+        - id: user-service_route
+          uri: lb://user-service
           predicates:
-            - Path=/admin/categories/**,/categories/**,/admin/comment/**,/events/**,/admin/compilations/**,/compilations/**,/admin/events/**,/admin/users/**,/users/**
+          - Path=/admin/users/**
+
+        - id: request-service_route
+          uri: lb://request-service
+          predicates:
+          - Path=/users/{userId}/requests,/users/{userId}/requests/{requestId}/cancel,/users/{userId}/events/{eventId}/requests
+
+        - id: event_service_categories
+          uri: lb://event-service
+          predicates:
+          - Path=/admin/categories/**,/categories/**
+
+        - id: event_service_compilations
+          uri: lb://event-service
+          predicates:
+          - Path=/admin/compilations/**,/compilations/**
+
+        - id: event_service_events
+          uri: lb://event-service
+          predicates:
+          - Path=/admin/events/**,/events/**,/users/{userId}/events,/users/{userId}/events/{eventId}
+
+        - id: default_route
+          uri: http://localhost:8080
+          predicates:
+          - Path=/**
+          filters:
+          - SetStatus=404
 
 logging:
   level:

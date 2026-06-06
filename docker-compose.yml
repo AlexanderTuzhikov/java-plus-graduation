@@ -1,14 +1,26 @@
 services:
-  stats-server:
-    ports:
-      - "9090:9090"
-
   stats-db:
     image: postgres:16.1
-
-  ewm-service:
     ports:
-      - "8080:8080"
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: stats
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - stats-data:/var/lib/postgresql/data
 
   ewm-db:
     image: postgres:16.1
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: ewm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ewm-data:/var/lib/postgresql/data
+
+volumes:
+  stats-data:
+  ewm-data:

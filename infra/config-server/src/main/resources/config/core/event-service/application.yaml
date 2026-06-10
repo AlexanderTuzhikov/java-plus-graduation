@@ -2,7 +2,7 @@ server:
   port: 0
 
 stats-server:
-  service-id: STATS-SERVER
+  service-id: dummy
 
 logging:
   level:
@@ -35,3 +35,16 @@ spring:
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
+
+grpc:
+  client:
+    collector:
+      address: "discovery:///collector"
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
+    analyzer:
+      address: "discovery:///analyzer"
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext

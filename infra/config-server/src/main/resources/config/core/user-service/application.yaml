@@ -2,7 +2,7 @@ server:
   port: 0
 
 stats-server:
-  service-id: STATS-SERVER
+  service-id: dummy
 
 logging:
   level:

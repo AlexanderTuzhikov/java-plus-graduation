@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.api.event.EventFeignClient;
 import ru.practicum.api.user.UserFeignClient;
+import ru.practicum.client.RecommendationGrpcClient;
 import ru.practicum.dto.event.EventFullDto;
 import ru.practicum.dto.event.EventState;
 import ru.practicum.dto.request.EventRequestStatusUpdateRequest;
@@ -18,6 +19,7 @@ import ru.practicum.exception.NotFoundException;
 import ru.practicum.mapper.RequestMapper;
 import ru.practicum.model.Request;
 import ru.practicum.repository.RequestRepository;
+import ru.practicum.stats.proto.ActionTypeProto;
 
 
 import java.time.LocalDateTime;
@@ -35,6 +37,7 @@ public class RequestServiceImpl implements RequestService {
     private final RequestMapper requestMapper;
     private final UserFeignClient userFeignClient;
     private final EventFeignClient eventFeignClient;
+    private final RecommendationGrpcClient recommendationGrpcClient;
 
     @Override
     public List<ParticipationRequestDto> getRequests(Long userId) {
@@ -79,7 +82,16 @@ public class RequestServiceImpl implements RequestService {
                 .created(LocalDateTime.now())
                 .build();
 
-        return requestMapper.mapToRequestDto(requestRepository.save(request));
+        Request savedRequest = requestRepository.save(request);
+
+        try {
+            recommendationGrpcClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
+            log.info("Sent REGISTER action to recommendation service: userId={}, eventId={}", userId, eventId);
+        } catch (Exception e) {
+            log.error("Failed to send REGISTER action to recommendation service: {}", e.getMessage(), e);
+        }
+
+        return requestMapper.mapToRequestDto(savedRequest);
     }
 
     @Override

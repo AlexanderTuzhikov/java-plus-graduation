@@ -1,7 +1,6 @@
 package ru.practicum.collector.grpc;
 
 import com.google.protobuf.Empty;
-import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,8 +11,6 @@ import ru.practicum.ewm.stats.avro.ActionTypeAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
 import ru.practicum.stats.proto.UserActionControllerGrpc;
 import ru.practicum.stats.proto.UserActionProto;
-
-import java.time.Instant;
 
 @Slf4j
 @GrpcService
@@ -27,37 +24,41 @@ public class UserActionControllerImpl extends UserActionControllerGrpc.UserActio
     @Override
     public void collectUserAction(UserActionProto request, StreamObserver<Empty> responseObserver) {
         try {
-            UserActionAvro message = toAvro(request);
-            kafkaTemplate.send(userActionsTopic, String.valueOf(message.getEventId()), message);
+            log.info("Received user action: userId={}, eventId={}, actionType={}",
+                    request.getUserId(), request.getEventId(), request.getActionType());
+
+            UserActionAvro avroMessage = convertToAvro(request);
+
+            kafkaTemplate.send(userActionsTopic, String.valueOf(avroMessage.getEventId()), avroMessage);
+
+            log.info("User action sent to Kafka: {}", avroMessage);
+
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
 
         } catch (Exception e) {
-
-            log.error("Ошибка при обработке действия пользователя: userId={}, eventId={}",
-                    request.getUserId(), request.getEventId(), e);
-
-            responseObserver.onError(Status.INTERNAL.withDescription("Ошибка обработки действия пользователя")
-                            .asException()
-            );
+            log.error("Error processing user action", e);
+            responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(e.getMessage()).asException());
         }
     }
 
-    private UserActionAvro toAvro(UserActionProto proto) {
-        ActionTypeAvro actionType = switch (proto.getActionType()) {
-            case ACTION_VIEW -> ActionTypeAvro.VIEW;
-            case ACTION_REGISTER -> ActionTypeAvro.REGISTER;
-            case ACTION_LIKE -> ActionTypeAvro.LIKE;
-            case UNRECOGNIZED ->
-                    throw new IllegalArgumentException(
-                            "Неизвестный тип действия: " + proto.getActionType()
-                    );
-        };
+    private UserActionAvro convertToAvro(UserActionProto proto) {
+        ActionTypeAvro actionType;
+        switch (proto.getActionType()) {
+            case ACTION_VIEW:
+                actionType = ActionTypeAvro.VIEW;
+                break;
+            case ACTION_REGISTER:
+                actionType = ActionTypeAvro.REGISTER;
+                break;
+            case ACTION_LIKE:
+                actionType = ActionTypeAvro.LIKE;
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown action type: " + proto.getActionType());
+        }
 
-        long timestampMillis = Instant.ofEpochSecond(
-                proto.getTimestamp().getSeconds(),
-                proto.getTimestamp().getNanos()
-        ).toEpochMilli();
+        long timestampMillis = proto.getTimestamp().getSeconds() * 1000 + proto.getTimestamp().getNanos() / 1000000;
 
         return UserActionAvro.newBuilder()
                 .setUserId(proto.getUserId())

@@ -3,16 +3,26 @@ server:
 
 spring:
   kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "*"
-        spring.json.type.mapping: "userAction:ru.practicum.ewm.stats.avro.UserActionAvro"
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    aggregator:
+      bootstrap-servers: localhost:9092
+      events-similarity-topic: stats.events-similarity.v1
+      producer:
+        key-serializer: org.apache.kafka.common.serialization.StringSerializer
+        value-serializer: ru.practicum.ewm.serializer.GeneralAvroSerializer
+      consumer:
+        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        value-deserializer: ru.practicum.ewm.serializer.UserActionDeserializer
+        group-id: aggregator-group
+        client-id: consumer-1
+        properties:
+          fetch.min.bytes: 1
+          max.poll.records: 100
+          enable.auto.commit: false
+          fetch.max.wait.ms: 1000
+          max.partition.fetch.bytes: 1048576
+          session.timeout.ms: 30000
+          max.poll.interval.ms: 300000
+          heartbeat.interval.ms: 10000
 
 kafka:
   topics:

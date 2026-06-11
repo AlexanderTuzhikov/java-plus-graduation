@@ -10,8 +10,9 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface UserActionRepository extends JpaRepository<UserAction, Long> {
-
     Optional<UserAction> findByUserIdAndEventId(Long userId, Long eventId);
+
+    List<UserAction> findByUserIdOrderByLastActionTimeDesc(Long userId);
 
     @Query("SELECT u.eventId FROM UserAction u WHERE u.userId = :userId")
     Set<Long> findEventIdsByUserId(@Param("userId") Long userId);

@@ -12,10 +12,12 @@ import ru.practicum.ewm.stats.avro.UserActionAvro;
 import ru.practicum.stats.proto.UserActionControllerGrpc;
 import ru.practicum.stats.proto.UserActionProto;
 
+
 @Slf4j
 @GrpcService
 @RequiredArgsConstructor
 public class UserActionControllerImpl extends UserActionControllerGrpc.UserActionControllerImplBase {
+
     private final KafkaTemplate<String, UserActionAvro> kafkaTemplate;
 
     @Value("${kafka.topics.user-actions}")
@@ -28,7 +30,6 @@ public class UserActionControllerImpl extends UserActionControllerGrpc.UserActio
                     request.getUserId(), request.getEventId(), request.getActionType());
 
             UserActionAvro avroMessage = convertToAvro(request);
-
             kafkaTemplate.send(userActionsTopic, String.valueOf(avroMessage.getEventId()), avroMessage);
 
             log.info("User action sent to Kafka: {}", avroMessage);

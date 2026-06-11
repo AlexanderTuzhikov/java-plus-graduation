@@ -1,5 +1,6 @@
 package ru.practicum.aggregator.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -10,58 +11,76 @@ import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AggregatorService {
-    private static final Map<ActionTypeAvro, Double> WEIGHTS = Map.of(
-            ActionTypeAvro.VIEW, 0.4,
-            ActionTypeAvro.REGISTER, 0.8,
-            ActionTypeAvro.LIKE, 1.0
-    );
+    private static final double VIEW_WEIGHT = 0.4;
+    private static final double REGISTER_WEIGHT = 0.8;
+    private static final double LIKE_WEIGHT = 1.0;
 
-    private final SimilarityStorage storage;
+    private final AggregationStorage storage;
+    private final SimilarityCalculator similarityCalculator;
     private final KafkaTemplate<String, EventSimilarityAvro> kafkaTemplate;
 
-    @Value("${kafka.topics.events-similarity:stats.events-similarity.v1}")
+    @Value("${kafka.topics.events-similarity}")
     private String eventsSimilarityTopic;
 
-    public AggregatorService(SimilarityStorage storage, KafkaTemplate<String, EventSimilarityAvro> kafkaTemplate) {
-        this.storage = storage;
-        this.kafkaTemplate = kafkaTemplate;
-    }
-
-    @KafkaListener(topics = "${kafka.topics.user-actions:stats.user-actions.v1}", groupId = "aggregator-group")
+    @KafkaListener(topics = "${kafka.topics.user-actions}", groupId = "${spring.kafka.consumer.group-id}")
     public void processUserAction(UserActionAvro action) {
         Long userId = action.getUserId();
         Long eventId = action.getEventId();
         double newWeight = getWeight(action.getActionType());
 
-        log.info("Обработка действия пользователя: userId={}, eventId={}, тип={}, вес={}",
-                userId, eventId, action.getActionType(), newWeight);
+        log.info("Обработка действия пользователя: userId={}, eventId={}, типДействия={}",
+                userId, eventId, action.getActionType()
+        );
 
-        Double oldWeight =
-                storage.getUserEventWeight(userId, eventId);
+        Map<Long, Double> userEvents = storage.getUserEventWeights()
+                .computeIfAbsent(userId, id -> new ConcurrentHashMap<>());
+        Double oldWeight = userEvents.get(eventId);
 
         if (oldWeight != null && newWeight <= oldWeight) {
 
-            log.debug("Вес не изменился: userId={}, eventId={}, старыйВес={}, новыйВес={}",
-                    userId, eventId, oldWeight, newWeight);
+            log.debug("Вес события не изменился: userId={}, eventId={}", userId, eventId);
 
             return;
         }
 
-        storage.saveUserEventWeight(userId, eventId, newWeight);
-        double deltaWeight = (oldWeight == null)
-                ? newWeight
-                : (newWeight - oldWeight);
-        storage.incrementEventTotalWeight(eventId, deltaWeight);
-        recalculateSimilarities(eventId, userId, oldWeight, newWeight);
+        userEvents.put(eventId, newWeight);
+
+        double deltaWeight = oldWeight == null
+                        ? newWeight
+                        : newWeight - oldWeight;
+
+        storage.getEventTotalWeights()
+                .merge(eventId, deltaWeight, Double::sum);
+
+        if (oldWeight == null) {
+            processNewEvent(userId, eventId, newWeight);
+        } else {
+            processUpdatedEvent(userId, eventId, oldWeight, newWeight);
+        }
     }
 
-    private void recalculateSimilarities(Long updatedEvent, Long userId, Double oldWeight, Double newWeight) {
+    private void processNewEvent(Long userId, Long updatedEvent, double newWeight) {
+        Map<Long, Double> userEvents = storage.getUserEventWeights().get(userId);
+
+        for (Map.Entry<Long, Double> entry : userEvents.entrySet()) {
+            Long otherEvent = entry.getKey();
+            if (otherEvent.equals(updatedEvent)) {
+                continue;
+            }
+
+            updatePairSimilarity(updatedEvent, otherEvent, Math.min(newWeight, entry.getValue()));
+        }
+    }
+
+    private void processUpdatedEvent(Long userId, Long updatedEvent, double oldWeight, double newWeight) {
         Map<Long, Double> userEvents =
-                storage.getUserEvents(userId);
+                storage.getUserEventWeights().get(userId);
 
         for (Map.Entry<Long, Double> entry : userEvents.entrySet()) {
 
@@ -71,70 +90,55 @@ public class AggregatorService {
                 continue;
             }
 
-            double otherWeight = entry.getValue();
-            EventPair pair = EventPair.of(updatedEvent, otherEvent);
-            double oldPairMin = (oldWeight == null)
-                    ? 0.0
-                    : Math.min(oldWeight, otherWeight);
-            double newPairMin = Math.min(newWeight, otherWeight);
-            double deltaMin = newPairMin - oldPairMin;
+            double deltaMin = Math.min(newWeight, entry.getValue()) - Math.min(oldWeight, entry.getValue());
 
             if (deltaMin == 0) {
                 continue;
             }
 
-            storage.incrementMinWeightSum(pair.eventA(), pair.eventB(), deltaMin);
-
-            double similarity = calculateSimilarity(pair.eventA(), pair.eventB());
-
-            sendSimilarityUpdate(pair.eventA(), pair.eventB(), similarity);
+            updatePairSimilarity(updatedEvent, otherEvent, deltaMin);
         }
     }
 
-    private double calculateSimilarity(Long eventA, Long eventB) {
-        Double totalWeightA = storage.getEventTotalWeight(eventA);
-        Double totalWeightB = storage.getEventTotalWeight(eventB);
-        Double sMin = storage.getMinWeightSum(eventA, eventB);
+    private void updatePairSimilarity(Long firstEvent, Long secondEvent, double deltaMin) {
+        EventPair pair = buildPair(firstEvent, secondEvent);
 
-        if (totalWeightA == null
-                || totalWeightB == null
-                || sMin == null
-                || totalWeightA == 0
-                || totalWeightB == 0) {
-            return 0.0;
-        }
+        storage.getMinWeightsSums()
+                .computeIfAbsent(pair.eventA(), id -> new ConcurrentHashMap<>())
+                .merge(pair.eventB(), deltaMin, Double::sum);
 
-        double similarity = sMin / (Math.sqrt(totalWeightA) * Math.sqrt(totalWeightB));
+        double similarity = similarityCalculator.calculate(pair.eventA(), pair.eventB());
 
-        log.debug("Рассчитана похожесть событий ({}, {}): {}",
-                eventA, eventB, similarity);
-
-        return similarity;
+        sendSimilarityUpdate(pair.eventA(), pair.eventB(), similarity);
     }
 
     private void sendSimilarityUpdate(Long eventA, Long eventB, double similarity) {
-        EventSimilarityAvro message = EventSimilarityAvro.newBuilder()
+        EventSimilarityAvro similarityAvro = EventSimilarityAvro.newBuilder()
                         .setEventA(eventA)
                         .setEventB(eventB)
                         .setScore(similarity)
                         .setTimestamp(System.currentTimeMillis())
                         .build();
 
-        kafkaTemplate.send(eventsSimilarityTopic, String.valueOf(eventA), message);
+        kafkaTemplate.send(eventsSimilarityTopic, String.valueOf(eventA), similarityAvro
+        );
 
-        log.debug("Отправлено обновление похожести в Kafka: eventA={}, eventB={}, похожесть={}",
+        log.debug("Отправлено сообщение о похожести событий: eventA={}, eventB={}, коэффициент={}",
                 eventA, eventB, similarity);
     }
 
     private double getWeight(ActionTypeAvro actionType) {
-        return WEIGHTS.getOrDefault(actionType, 0.0);
+        return switch (actionType) {
+            case VIEW -> VIEW_WEIGHT;
+            case REGISTER -> REGISTER_WEIGHT;
+            case LIKE -> LIKE_WEIGHT;
+        };
+    }
+
+    private EventPair buildPair(Long firstEvent, Long secondEvent) {
+        return new EventPair(Math.min(firstEvent, secondEvent), Math.max(firstEvent, secondEvent));
     }
 
     private record EventPair(Long eventA, Long eventB) {
-        static EventPair of(Long first, Long second) {
-            return (first < second)
-                    ? new EventPair(first, second)
-                    : new EventPair(second, first);
-        }
     }
 }

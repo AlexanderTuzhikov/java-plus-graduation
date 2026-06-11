@@ -5,7 +5,6 @@ import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
-import ru.practicum.analyzer.model.RecommendationDto;
 import ru.practicum.analyzer.service.RecommendationService;
 import ru.practicum.stats.proto.*;
 
@@ -18,77 +17,53 @@ public class RecommendationsControllerImpl extends RecommendationsControllerGrpc
     private final RecommendationService recommendationService;
 
     @Override
-    public void getRecommendationsForUser(UserPredictionsRequestProto request,
-                                          StreamObserver<RecommendedEventProto> responseObserver) {
+    public void getRecommendationsForUser(UserPredictionsRequestProto request, StreamObserver<RecommendedEventProto> responseObserver) {
         try {
-            List<RecommendationDto> recommendations = recommendationService.getRecommendationsForUser(request.getUserId(), request.getMaxResults());
 
-            recommendations.stream()
-                    .map(this::toProto)
-                    .forEach(responseObserver::onNext);
+            log.info("Получен запрос рекомендаций: userId={}, maxResults={}",
+                    request.getUserId(), request.getMaxResults());
 
-            responseObserver.onCompleted();
-
+            sendResponse(recommendationService.getRecommendations(request.getUserId(), request.getMaxResults()), responseObserver);
         } catch (Exception e) {
-            log.error("Ошибка при получении рекомендаций для пользователя {}", request.getUserId(), e);
-
-            responseObserver.onError(Status.INTERNAL.withDescription("Не удалось получить рекомендации").asException());
+            handleError(responseObserver, "Ошибка получения рекомендаций", e);
         }
     }
 
     @Override
-    public void getSimilarEvents(SimilarEventsRequestProto request,
-                                 StreamObserver<RecommendedEventProto> responseObserver) {
+    public void getSimilarEvents(SimilarEventsRequestProto request, StreamObserver<RecommendedEventProto> responseObserver) {
         try {
-            List<RecommendationDto> recommendations = recommendationService.getSimilarEvents(request.getEventId(), request.getUserId(), request.getMaxResults());
 
-            recommendations.stream()
-                    .map(this::toProto)
-                    .forEach(responseObserver::onNext);
-
-            responseObserver.onCompleted();
-
-        } catch (Exception e) {
-            log.error("Ошибка при поиске похожих событий {}", request.getEventId(), e);
-
-            responseObserver.onError(
-                    Status.INTERNAL
-                            .withDescription("Не удалось получить похожие события")
-                            .asException()
+            log.info("Получен запрос похожих событий: eventId={}, userId={}, maxResults={}",
+                    request.getEventId(), request.getUserId(), request.getMaxResults()
             );
+
+            sendResponse(recommendationService.getSimilarEvents(request.getEventId(), request.getUserId(), request.getMaxResults()), responseObserver);
+        } catch (Exception e) {
+            handleError(responseObserver, "Ошибка получения похожих событий", e);
         }
     }
 
     @Override
-    public void getInteractionsCount(InteractionsCountRequestProto request,
-                                     StreamObserver<RecommendedEventProto> responseObserver) {
+    public void getInteractionsCount(InteractionsCountRequestProto request, StreamObserver<RecommendedEventProto> responseObserver) {
         try {
-            List<RecommendationDto> interactions =
-                    recommendationService.getInteractionsCount(
-                            request.getEventIdList()
-                    );
 
-            interactions.stream()
-                    .map(this::toProto)
-                    .forEach(responseObserver::onNext);
+            log.info("Получен запрос количества взаимодействий для {} событий", request.getEventIdList().size());
 
-            responseObserver.onCompleted();
+            sendResponse(recommendationService.getInteractionsCount(request.getEventIdList()), responseObserver);
 
         } catch (Exception e) {
-            log.error("Ошибка при получении статистики взаимодействий", e);
-
-            responseObserver.onError(
-                    Status.INTERNAL
-                            .withDescription("Не удалось получить статистику")
-                            .asException()
-            );
+            handleError(responseObserver, "Ошибка получения количества взаимодействий", e);
         }
     }
 
-    private RecommendedEventProto toProto(RecommendationDto dto) {
-        return RecommendedEventProto.newBuilder()
-                .setEventId(dto.getEventId())
-                .setScore(dto.getScore())
-                .build();
+    private void sendResponse(List<RecommendedEventProto> response, StreamObserver<RecommendedEventProto> observer) {
+        response.forEach(observer::onNext);
+        observer.onCompleted();
+    }
+
+    private void handleError(StreamObserver<?> observer, String message, Exception exception) {
+        log.error(message, exception);
+
+        observer.onError(Status.INTERNAL.withDescription(message).asRuntimeException());
     }
 }

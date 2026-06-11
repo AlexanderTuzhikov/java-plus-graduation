@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface EventSimilarityRepository extends JpaRepository<EventSimilarity, Long> {
-
     Optional<EventSimilarity> findByEventAAndEventB(Long eventA, Long eventB);
 
     @Query("SELECT e FROM EventSimilarity e WHERE e.eventA = :eventId OR e.eventB = :eventId")

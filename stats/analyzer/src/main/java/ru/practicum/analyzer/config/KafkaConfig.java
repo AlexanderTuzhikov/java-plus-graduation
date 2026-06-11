@@ -9,42 +9,36 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
 public class KafkaConfig {
-    @Value("${spring.kafka.analyzer.bootstrap-servers}")
+    @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    @Value("${spring.kafka.analyzer.consumers.user-action.key-deserializer}")
-    private String userActionKeyDeserializer;
+    @Value("${spring.kafka.consumer.key-deserializer}")
+    private String keyDeserializer;
 
-    @Value("${spring.kafka.analyzer.consumers.user-action.value-deserializer}")
-    private String userActionValueDeserializer;
+    @Value("${spring.kafka.consumer.value-deserializer}")
+    private String valueDeserializer;
 
-    @Value("${spring.kafka.analyzer.consumers.user-action.group-id}")
-    private String userActionGroupId;
+    @Value("${spring.kafka.consumer.group-id}")
+    private String groupId;
 
-    @Value("${spring.kafka.analyzer.consumers.event-similarity.key-deserializer}")
-    private String eventSimilarityKeyDeserializer;
-
-    @Value("${spring.kafka.analyzer.consumers.event-similarity.value-deserializer}")
-    private String eventSimilarityValueDeserializer;
-
-    @Value("${spring.kafka.analyzer.consumers.event-similarity.group-id}")
-    private String eventSimilarityGroupId;
+    @Value("${spring.kafka.consumer.trusted-packages}")
+    private String trustedPackages;
 
     @Bean
     public ConsumerFactory<String, UserActionAvro> userActionConsumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
-
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, userActionKeyDeserializer);
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, userActionValueDeserializer);
-        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, userActionGroupId);
-
+        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializer);
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer);
+        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, trustedPackages);
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
@@ -59,12 +53,11 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, EventSimilarityAvro> eventSimilarityConsumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
-
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, eventSimilarityKeyDeserializer);
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, eventSimilarityValueDeserializer);
-        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, eventSimilarityGroupId);
-
+        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializer);
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer);
+        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, trustedPackages);
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 

@@ -14,13 +14,12 @@ import ru.practicum.dto.request.EventRequestStatusUpdateResult;
 import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.dto.request.RequestState;
 import ru.practicum.dto.user.UserDto;
+import ru.practicum.ewm.stats.proto.ActionTypeProto;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.mapper.RequestMapper;
 import ru.practicum.model.Request;
 import ru.practicum.repository.RequestRepository;
-import ru.practicum.stats.proto.ActionTypeProto;
-
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

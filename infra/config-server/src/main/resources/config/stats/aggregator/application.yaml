@@ -6,17 +6,13 @@ spring:
     name: aggregator
   kafka:
     bootstrap-servers: localhost:9092
-    consumer:
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      group-id: aggregator-group
-      trusted-packages: ru.practicum.ewm.stats.avro
-      properties:
-        spring.json.trusted.packages: "*"
-        spring.json.type.mapping: "userAction:ru.practicum.ewm.stats.avro.UserActionAvro"
+    group-id: aggregator-group
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: ru.practicum.ewm.kafka.serializer.GeneralAvroSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: ru.practicum.ewm.kafka.serializer.UserActionDeserializer
 
 kafka:
   topics:
@@ -35,4 +31,3 @@ management:
   endpoint:
     health:
       show-details: always
-

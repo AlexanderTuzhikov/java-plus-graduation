@@ -7,7 +7,7 @@ import ru.practicum.analyzer.model.EventSimilarity;
 import ru.practicum.analyzer.model.UserAction;
 import ru.practicum.analyzer.repository.EventSimilarityRepository;
 import ru.practicum.analyzer.repository.UserActionRepository;
-import ru.practicum.stats.proto.RecommendedEventProto;
+import ru.practicum.ewm.stats.proto.RecommendedEventProto;
 
 import java.util.*;
 

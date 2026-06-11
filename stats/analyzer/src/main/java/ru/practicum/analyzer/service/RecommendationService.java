@@ -1,6 +1,6 @@
 package ru.practicum.analyzer.service;
 
-import ru.practicum.stats.proto.RecommendedEventProto;
+import ru.practicum.ewm.stats.proto.RecommendedEventProto;
 
 import java.util.List;
 

@@ -10,6 +10,7 @@ import ru.practicum.ewm.stats.avro.ActionTypeAvro;
 import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,7 +29,7 @@ public class AggregatorService {
     @Value("${kafka.topics.events-similarity}")
     private String eventsSimilarityTopic;
 
-    @KafkaListener(topics = "${kafka.topics.user-actions}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${kafka.topics.user-actions}", groupId = "${spring.kafka.group-id}")
     public void processUserAction(UserActionAvro action) {
         Long userId = action.getUserId();
         Long eventId = action.getEventId();
@@ -117,11 +118,10 @@ public class AggregatorService {
                         .setEventA(eventA)
                         .setEventB(eventB)
                         .setScore(similarity)
-                        .setTimestamp(System.currentTimeMillis())
+                        .setTimestamp(Instant.now())
                         .build();
 
-        kafkaTemplate.send(eventsSimilarityTopic, String.valueOf(eventA), similarityAvro
-        );
+        kafkaTemplate.send(eventsSimilarityTopic, String.valueOf(eventA), similarityAvro);
 
         log.debug("Отправлено сообщение о похожести событий: eventA={}, eventB={}, коэффициент={}",
                 eventA, eventB, similarity);

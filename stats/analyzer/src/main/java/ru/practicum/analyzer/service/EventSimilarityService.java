@@ -10,7 +10,7 @@ import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 @Service
 @RequiredArgsConstructor
@@ -56,10 +56,7 @@ public class EventSimilarityService {
                 entity.getEventA(), entity.getEventB());
     }
 
-    private LocalDateTime toLocalDateTime(long timestamp) {
-        return LocalDateTime.ofInstant(
-                Instant.ofEpochMilli(timestamp),
-                ZoneId.systemDefault()
-        );
+    private LocalDateTime toLocalDateTime(Instant timestamp) {
+        return LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC);
     }
 }

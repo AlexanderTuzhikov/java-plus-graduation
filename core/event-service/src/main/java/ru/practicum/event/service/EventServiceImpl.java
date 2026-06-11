@@ -21,10 +21,10 @@ import ru.practicum.dto.user.UserShortDto;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.repository.EventRepository;
+import ru.practicum.ewm.stats.proto.ActionTypeProto;
 import ru.practicum.exception.BadRequestException;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
-import ru.practicum.stats.proto.ActionTypeProto;
 
 import java.time.LocalDateTime;
 import java.util.*;

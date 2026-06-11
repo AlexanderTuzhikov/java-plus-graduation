@@ -9,16 +9,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import ru.practicum.ewm.stats.avro.ActionTypeAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
-import ru.practicum.stats.proto.UserActionControllerGrpc;
-import ru.practicum.stats.proto.UserActionProto;
+import ru.practicum.ewm.stats.proto.UserActionControllerGrpc;
+import ru.practicum.ewm.stats.proto.UserActionProto;
 
+import java.time.Instant;
 
 @Slf4j
 @GrpcService
 @RequiredArgsConstructor
 public class UserActionControllerImpl extends UserActionControllerGrpc.UserActionControllerImplBase {
-
-    private final KafkaTemplate<String, UserActionAvro> kafkaTemplate;
+    private final KafkaTemplate<Long, UserActionAvro> kafkaTemplate;
 
     @Value("${kafka.topics.user-actions}")
     private String userActionsTopic;
@@ -30,7 +30,7 @@ public class UserActionControllerImpl extends UserActionControllerGrpc.UserActio
                     request.getUserId(), request.getEventId(), request.getActionType());
 
             UserActionAvro avroMessage = convertToAvro(request);
-            kafkaTemplate.send(userActionsTopic, String.valueOf(avroMessage.getEventId()), avroMessage);
+            kafkaTemplate.send(userActionsTopic, avroMessage.getEventId(), avroMessage);
 
             log.info("User action sent to Kafka: {}", avroMessage);
 
@@ -44,28 +44,20 @@ public class UserActionControllerImpl extends UserActionControllerGrpc.UserActio
     }
 
     private UserActionAvro convertToAvro(UserActionProto proto) {
-        ActionTypeAvro actionType;
-        switch (proto.getActionType()) {
-            case ACTION_VIEW:
-                actionType = ActionTypeAvro.VIEW;
-                break;
-            case ACTION_REGISTER:
-                actionType = ActionTypeAvro.REGISTER;
-                break;
-            case ACTION_LIKE:
-                actionType = ActionTypeAvro.LIKE;
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown action type: " + proto.getActionType());
-        }
+        ActionTypeAvro actionType = switch (proto.getActionType()) {
+            case ACTION_VIEW -> ActionTypeAvro.VIEW;
+            case ACTION_REGISTER -> ActionTypeAvro.REGISTER;
+            case ACTION_LIKE -> ActionTypeAvro.LIKE;
+            default -> throw new IllegalArgumentException("Unknown action type: " + proto.getActionType());
+        };
 
-        long timestampMillis = proto.getTimestamp().getSeconds() * 1000 + proto.getTimestamp().getNanos() / 1000000;
+        Instant timestamp = Instant.ofEpochSecond(proto.getTimestamp().getSeconds(), proto.getTimestamp().getNanos());
 
         return UserActionAvro.newBuilder()
                 .setUserId(proto.getUserId())
                 .setEventId(proto.getEventId())
                 .setActionType(actionType)
-                .setTimestamp(timestampMillis)
+                .setTimestamp(timestamp)
                 .build();
     }
 }

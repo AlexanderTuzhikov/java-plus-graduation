@@ -20,14 +20,31 @@ spring:
       mode: always
       schema-locations: classpath:schema.sql
   kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      group-id: analyzer-group
-      trusted-packages: ru.practicum.ewm.stats.avro
-      properties:
-        spring.json.trusted.packages: "ru.practicum.ewm.stats.avro"
+    analyzer:
+      bootstrap-servers: localhost:9092
+      consumers:
+        user-action:
+          key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+          value-deserializer: ru.practicum.ewm.kafka.serializer.UserActionDeserializer
+          group-id: analyzer-user-group
+          client-id: consumer-user-1
+          properties:
+            fetch.min.bytes: 1
+            max.poll.records: 100
+            enable.auto.commit: false
+            fetch.max.wait.ms: 1000
+            max.partition.fetch.bytes: 1048576
+        event-similarity:
+          key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+          value-deserializer: ru.practicum.ewm.kafka.serializer.EventSimilarityDeserializer
+          group-id: analyzer-event-group
+          client-id: consumer-event-1
+          properties:
+            fetch.min.bytes: 1
+            max.poll.records: 100
+            enable.auto.commit: false
+            fetch.max.wait.ms: 1000
+            max.partition.fetch.bytes: 1048576
 
 kafka:
   topics:

@@ -5,7 +5,7 @@ import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.stereotype.Component;
-import ru.practicum.stats.proto.*;
+import ru.practicum.ewm.stats.proto.*;
 
 import java.util.ArrayList;
 import java.util.Iterator;

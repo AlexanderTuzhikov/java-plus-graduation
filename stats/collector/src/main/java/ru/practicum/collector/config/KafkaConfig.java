@@ -24,7 +24,7 @@ public class KafkaConfig {
     private String valueSerializer;
 
     @Bean
-    public ProducerFactory<String, UserActionAvro> producerFactory() {
+    public ProducerFactory<Long, UserActionAvro> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, keySerializer);
@@ -34,7 +34,7 @@ public class KafkaConfig {
     }
 
     @Bean
-    public KafkaTemplate<String, UserActionAvro> kafkaTemplate() {
+    public KafkaTemplate<Long, UserActionAvro> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 }

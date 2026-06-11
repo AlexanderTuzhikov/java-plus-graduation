@@ -11,7 +11,7 @@ import ru.practicum.ewm.stats.avro.UserActionAvro;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Map;
 
 @Service
@@ -80,7 +80,7 @@ public class UserActionService {
         throw new IllegalArgumentException("Неизвестный тип действия: " + actionType);
     }
 
-    private LocalDateTime toLocalDateTime(long timestamp) {
-        return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault());
+    private LocalDateTime toLocalDateTime(Instant timestamp) {
+        return LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC);
     }
 }

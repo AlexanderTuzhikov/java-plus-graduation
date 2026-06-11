@@ -1,69 +1,160 @@
 package ru.practicum.analyzer.grpc;
 
-import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
-import ru.practicum.analyzer.service.RecommendationService;
+import ru.practicum.analyzer.model.EventSimilarity;
+import ru.practicum.analyzer.model.UserAction;
+import ru.practicum.analyzer.repository.EventSimilarityRepository;
+import ru.practicum.analyzer.repository.UserActionRepository;
 import ru.practicum.ewm.stats.proto.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @GrpcService
 @RequiredArgsConstructor
 public class RecommendationsControllerImpl extends RecommendationsControllerGrpc.RecommendationsControllerImplBase {
-    private final RecommendationService recommendationService;
+
+    private final UserActionRepository userActionRepository;
+    private final EventSimilarityRepository eventSimilarityRepository;
 
     @Override
-    public void getRecommendationsForUser(UserPredictionsRequestProto request, StreamObserver<RecommendedEventProto> responseObserver) {
+    public void getRecommendationsForUser(UserPredictionsRequestProto request,
+                                          StreamObserver<RecommendedEventProto> responseObserver) {
         try {
+            Long userId = request.getUserId();
+            int maxResults = request.getMaxResults();
 
-            log.info("Получен запрос рекомендаций: userId={}, maxResults={}",
-                    request.getUserId(), request.getMaxResults());
+            log.info("Getting recommendations for user: userId={}, maxResults={}", userId, maxResults);
 
-            sendResponse(recommendationService.getRecommendations(request.getUserId(), request.getMaxResults()), responseObserver);
+            List<UserAction> userActions = userActionRepository.findTopByUserIdOrderByLastActionTimeDesc(userId, maxResults);
+
+            if (userActions.isEmpty()) {
+                log.info("No user actions found for userId={}", userId);
+                responseObserver.onCompleted();
+                return;
+            }
+
+            log.info("Found {} recent user actions for userId={}", userActions.size(), userId);
+
+            Set<Long> interactedEvents = userActionRepository.findEventIdsByUserId(userId);
+
+            log.info("User {} has interacted with {} events", userId, interactedEvents.size());
+
+            Map<Long, Double> candidateScores = new HashMap<>();
+
+            for (UserAction action : userActions) {
+                List<EventSimilarity> similarities = eventSimilarityRepository.findSimilarEventsOrderByScoreDesc(action.getEventId());
+
+                for (EventSimilarity sim : similarities) {
+                    Long candidateId = sim.getEventA().equals(action.getEventId()) ? sim.getEventB() : sim.getEventA();
+
+                    if (!interactedEvents.contains(candidateId)) {
+                        candidateScores.merge(candidateId, sim.getScore(), Double::sum);
+                    }
+                }
+            }
+
+            log.info("Found {} candidate events for recommendations", candidateScores.size());
+
+            List<RecommendedEventProto> recommendations = candidateScores.entrySet().stream()
+                    .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                    .limit(maxResults)
+                    .map(entry -> RecommendedEventProto.newBuilder()
+                            .setEventId(entry.getKey())
+                            .setScore(entry.getValue())
+                            .build())
+                    .collect(Collectors.toList());
+
+            log.info("Sending {} recommendations to user {}", recommendations.size(), userId);
+
+            for (RecommendedEventProto recommendation : recommendations) {
+                responseObserver.onNext(recommendation);
+            }
+
+            responseObserver.onCompleted();
+
         } catch (Exception e) {
-            handleError(responseObserver, "Ошибка получения рекомендаций", e);
+            log.error("Error getting recommendations for user", e);
+            responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(e.getMessage()).asException());
         }
     }
 
     @Override
-    public void getSimilarEvents(SimilarEventsRequestProto request, StreamObserver<RecommendedEventProto> responseObserver) {
+    public void getSimilarEvents(SimilarEventsRequestProto request,
+                                 StreamObserver<RecommendedEventProto> responseObserver) {
         try {
+            Long eventId = request.getEventId();
+            Long userId = request.getUserId();
+            int maxResults = request.getMaxResults();
 
-            log.info("Получен запрос похожих событий: eventId={}, userId={}, maxResults={}",
-                    request.getEventId(), request.getUserId(), request.getMaxResults()
-            );
+            log.info("Getting similar events: eventId={}, userId={}, maxResults={}", eventId, userId, maxResults);
 
-            sendResponse(recommendationService.getSimilarEvents(request.getEventId(), request.getUserId(), request.getMaxResults()), responseObserver);
+            Set<Long> seenEvents = userId > 0 ?
+                    userActionRepository.findEventIdsByUserId(userId) : new HashSet<>();
+
+            log.info("User {} has seen {} events", userId, seenEvents.size());
+
+            List<EventSimilarity> similarities = eventSimilarityRepository.findSimilarEventsOrderByScoreDesc(eventId);
+
+            log.info("Found {} similar events for eventId={}", similarities.size(), eventId);
+
+            List<RecommendedEventProto> similarEvents = similarities.stream()
+                    .map(sim -> {
+                        Long similarId = sim.getEventA().equals(eventId) ? sim.getEventB() : sim.getEventA();
+                        return Map.entry(similarId, sim.getScore());
+                    })
+                    .filter(entry -> !seenEvents.contains(entry.getKey()))
+                    .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                    .limit(maxResults)
+                    .map(entry -> RecommendedEventProto.newBuilder()
+                            .setEventId(entry.getKey())
+                            .setScore(entry.getValue())
+                            .build())
+                    .collect(Collectors.toList());
+
+            log.info("Sending {} similar events to user", similarEvents.size());
+
+            for (RecommendedEventProto similarEvent : similarEvents) {
+                responseObserver.onNext(similarEvent);
+            }
+
+            responseObserver.onCompleted();
+
         } catch (Exception e) {
-            handleError(responseObserver, "Ошибка получения похожих событий", e);
+            log.error("Error getting similar events", e);
+            responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(e.getMessage()).asException());
         }
     }
 
     @Override
-    public void getInteractionsCount(InteractionsCountRequestProto request, StreamObserver<RecommendedEventProto> responseObserver) {
+    public void getInteractionsCount(InteractionsCountRequestProto request,
+                                     StreamObserver<RecommendedEventProto> responseObserver) {
         try {
+            List<Long> eventIds = request.getEventIdList();
 
-            log.info("Получен запрос количества взаимодействий для {} событий", request.getEventIdList().size());
+            log.info("Getting interactions count for {} events", eventIds.size());
 
-            sendResponse(recommendationService.getInteractionsCount(request.getEventIdList()), responseObserver);
+            for (Long eventId : eventIds) {
+                Double totalWeight = userActionRepository.sumWeightsByEventId(eventId);
+                double score = totalWeight != null ? totalWeight : 0.0;
+
+                log.debug("EventId={} total weight={}", eventId, score);
+
+                responseObserver.onNext(RecommendedEventProto.newBuilder()
+                        .setEventId(eventId)
+                        .setScore(score)
+                        .build());
+            }
+
+            responseObserver.onCompleted();
 
         } catch (Exception e) {
-            handleError(responseObserver, "Ошибка получения количества взаимодействий", e);
+            log.error("Error getting interactions count", e);
+            responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(e.getMessage()).asException());
         }
-    }
-
-    private void sendResponse(List<RecommendedEventProto> response, StreamObserver<RecommendedEventProto> observer) {
-        response.forEach(observer::onNext);
-        observer.onCompleted();
-    }
-
-    private void handleError(StreamObserver<?> observer, String message, Exception exception) {
-        log.error(message, exception);
-
-        observer.onError(Status.INTERNAL.withDescription(message).asRuntimeException());
     }
 }

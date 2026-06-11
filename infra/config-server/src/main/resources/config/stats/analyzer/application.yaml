@@ -26,7 +26,7 @@ spring:
         user-action:
           key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
           value-deserializer: ru.practicum.ewm.kafka.serializer.UserActionDeserializer
-          group-id: analyzer-user-group
+          group-id: analyzer-group
           client-id: consumer-user-1
           properties:
             fetch.min.bytes: 1
@@ -37,7 +37,7 @@ spring:
         event-similarity:
           key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
           value-deserializer: ru.practicum.ewm.kafka.serializer.EventSimilarityDeserializer
-          group-id: analyzer-event-group
+          group-id: analyzer-group
           client-id: consumer-event-1
           properties:
             fetch.min.bytes: 1

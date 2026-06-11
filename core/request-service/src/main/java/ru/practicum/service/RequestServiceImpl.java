@@ -13,12 +13,13 @@ import ru.practicum.dto.request.EventRequestStatusUpdateResult;
 import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.dto.request.RequestState;
 import ru.practicum.dto.user.UserDto;
+import ru.practicum.ewm.client.CollectorClient;
+import ru.practicum.ewm.stats.proto.ActionTypeProto;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.mapper.RequestMapper;
 import ru.practicum.model.Request;
 import ru.practicum.repository.RequestRepository;
-
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ public class RequestServiceImpl implements RequestService {
     private final RequestMapper requestMapper;
     private final UserFeignClient userFeignClient;
     private final EventFeignClient eventFeignClient;
+    private final CollectorClient collectorClient;
 
     @Override
     public List<ParticipationRequestDto> getRequests(Long userId) {
@@ -79,7 +81,19 @@ public class RequestServiceImpl implements RequestService {
                 .created(LocalDateTime.now())
                 .build();
 
-        return requestMapper.mapToRequestDto(requestRepository.save(request));
+        Request savedRequest = requestRepository.save(request);
+
+        try {
+            collectorClient.collectUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
+
+            log.info("Sent REGISTER action to recommendation service: userId={}, eventId={}", userId, eventId);
+
+        } catch (Exception e) {
+
+            log.error("Failed to send REGISTER action to recommendation service: {}", e.getMessage(), e);
+        }
+
+        return requestMapper.mapToRequestDto(savedRequest);
     }
 
     @Override

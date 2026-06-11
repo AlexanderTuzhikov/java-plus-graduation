@@ -19,11 +19,16 @@ public interface EventService {
 
     EventFullDto patchEventByAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest);
 
-    List<EventShortDto> getEventsByPublicFilters(PublicEventParams params, HttpServletRequest request);
+    List<EventShortDto> getEventsByPublicFilters(PublicEventParams params, Long userId, HttpServletRequest request);
 
-    EventFullDto getEventById(Long eventId, HttpServletRequest request);
+    EventFullDto getEventById(Long eventId, Long userId, HttpServletRequest request);
+
+    List<EventShortDto> getRecommendationsForUser(Long userId, int size);
+
+    void likeEvent(Long userId, Long eventId);
+
+    boolean hasUserInteractedWithEvent(Long userId, Long eventId);
 
     EventFullDto getEventById(Long eventId);
 
-    void saveStats(HttpServletRequest request);
 }

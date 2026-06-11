@@ -23,14 +23,14 @@ public interface EventMapper {
     @Mapping(target = "id", source = "event.id")
     @Mapping(target = "location", source = "event.location")
     @Mapping(target = "initiator", source = "userShortDto")
-    @Mapping(target = "views", source = "views", defaultValue = "0L")
+    @Mapping(target = "rating", source = "rating", defaultValue = "0.0")
     @Mapping(target = "confirmedRequests", source = "confirmedRequests", defaultValue = "0L")
-    EventFullDto toEventFullDto(Event event, Long views, Long confirmedRequests, UserShortDto userShortDto);
+    EventFullDto toEventFullDto(Event event, Double rating, Long confirmedRequests, UserShortDto userShortDto);
 
     @Mapping(target = "id", source = "event.id")
     @Mapping(target = "category", source = "event.category")
     @Mapping(target = "initiator", source = "userShortDto")
-    @Mapping(target = "views", source = "views", defaultValue = "0L")
+    @Mapping(target = "rating", source = "rating", defaultValue = "0.0")
     @Mapping(target = "confirmedRequests", source = "confirmedRequests", defaultValue = "0L")
-    EventShortDto toEventShortDto(Event event, Long views, Long confirmedRequests, UserShortDto userShortDto);
+    EventShortDto toEventShortDto(Event event, Double rating, Long confirmedRequests, UserShortDto userShortDto);
 }

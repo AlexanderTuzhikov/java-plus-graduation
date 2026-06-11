@@ -29,7 +29,6 @@ Explore With Me — микросервисное приложение для п�
 - user-service
 - event-service
 - request-service
-- stats-server
 
 Каждый сервис использует собственную базу данных PostgreSQL.
 

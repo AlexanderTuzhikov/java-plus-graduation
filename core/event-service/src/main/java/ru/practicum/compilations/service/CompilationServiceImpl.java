@@ -7,11 +7,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.api.user.UserFeignClient;
-import ru.practicum.client.StatClient;
 import ru.practicum.compilations.mapper.CompilationMapper;
 import ru.practicum.compilations.model.Compilation;
 import ru.practicum.compilations.repository.CompilationRepository;
-import ru.practicum.dto.ViewStatsDto;
 import ru.practicum.dto.compilation.CompilationDto;
 import ru.practicum.dto.compilation.CompilationSearchParam;
 import ru.practicum.dto.compilation.NewCompilationRequest;
@@ -24,7 +22,6 @@ import ru.practicum.event.model.Event;
 import ru.practicum.event.repository.EventRepository;
 import ru.practicum.exception.NotFoundException;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -37,7 +34,6 @@ public class CompilationServiceImpl implements CompilationService {
     private final EventRepository eventRepository;
     private final CompilationMapper compilationMapper;
     private final EventMapper eventMapper;
-    private final StatClient statClient;
     private final UserFeignClient userFeignClient;
 
     @Override
@@ -130,7 +126,6 @@ public class CompilationServiceImpl implements CompilationService {
             return compilationMapper.toCompilationDto(compilation, Collections.emptyList());
         }
 
-        Map<Long, Long> viewsMap = getEventsViews(events);
         Map<Long, Long> confirmedRequestsMap = getConfirmedRequests(events);
 
         List<Long> initiatorIds = events.stream()
@@ -142,47 +137,17 @@ public class CompilationServiceImpl implements CompilationService {
 
         List<EventShortDto> eventShortDtos = events.stream()
                 .map(event -> {
-                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+                    Double rating = 0.0;
                     Long confirmedRequests = confirmedRequestsMap.getOrDefault(event.getId(), 0L);
                     UserShortDto initiator = initiatorsMap.get(event.getInitiatorId());
                     if (initiator == null) {
                         initiator = new UserShortDto(event.getInitiatorId(), "Unknown User");
                     }
-                    return eventMapper.toEventShortDto(event, views, confirmedRequests, initiator);
+                    return eventMapper.toEventShortDto(event, rating, confirmedRequests, initiator);
                 })
                 .collect(Collectors.toList());
 
         return compilationMapper.toCompilationDto(compilation, eventShortDtos);
-    }
-
-    private Map<Long, Long> getEventsViews(List<Event> events) {
-        Map<Long, Long> views = new HashMap<>();
-
-        if (events.isEmpty()) {
-            return views;
-        }
-
-        List<String> uris = events.stream()
-                .map(event -> "/events/" + event.getId())
-                .collect(Collectors.toList());
-
-        try {
-            List<ViewStatsDto> stats = statClient.getStats(
-                    LocalDateTime.now().minusYears(1),
-                    LocalDateTime.now().plusYears(1),
-                    uris.isEmpty() ? Collections.emptyList() : uris,
-                    true);
-
-            for (ViewStatsDto stat : stats) {
-                String uri = stat.getUri();
-                Long eventId = Long.parseLong(uri.substring(uri.lastIndexOf("/") + 1));
-                views.put(eventId, stat.getHits());
-            }
-        } catch (Exception e) {
-            log.warn("Error getting stats from stats-service: {}. Returning 0 views for all events.", e.getMessage());
-        }
-
-        return views;
     }
 
     private Map<Long, UserShortDto> getInitiatorsMap(List<Long> userIds) {

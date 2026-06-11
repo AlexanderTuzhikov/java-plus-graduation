@@ -26,12 +26,6 @@
         </dependency>
 
         <dependency>
-            <groupId>ru.practicum</groupId>
-            <artifactId>schema</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
@@ -124,6 +118,7 @@
             <version>3.25.1</version>
             <scope>compile</scope>
         </dependency>
+
         <dependency>
             <groupId>ru.practicum</groupId>
             <artifactId>proto-schemas</artifactId>

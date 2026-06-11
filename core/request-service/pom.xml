@@ -22,12 +22,6 @@
     <dependencies>
         <dependency>
             <groupId>ru.practicum</groupId>
-            <artifactId>schema</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>ru.practicum</groupId>
             <artifactId>interaction-api</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -129,12 +123,14 @@
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java-util</artifactId>
         </dependency>
+
         <dependency>
             <groupId>ru.practicum</groupId>
             <artifactId>proto-schemas</artifactId>
             <version>0.0.1-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
+
         <dependency>
             <groupId>ru.practicum</groupId>
             <artifactId>proto-schemas</artifactId>

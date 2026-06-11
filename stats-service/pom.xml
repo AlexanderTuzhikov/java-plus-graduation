@@ -11,7 +11,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>stats</artifactId>
+    <artifactId>stats-service</artifactId>
     <packaging>pom</packaging>
 
     <modules>

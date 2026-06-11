@@ -1,9 +1,6 @@
 server:
   port: 0
 
-stats-server:
-  service-id: dummy
-
 logging:
   level:
     root: INFO

@@ -4,52 +4,56 @@ server:
 spring:
   application:
     name: analyzer
-  cloud:
-    config:
-      enabled: false
   datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/stats
-    username: postgres
-    password: postgres
+      url: jdbc:postgresql://localhost:5432/stats
+      username: postgres
+      password: postgres
+      driver-class-name: org.postgresql.Driver
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
   sql:
     init:
       mode: always
-      schema-locations: classpath:schema.sql
-  kafka:
-    analyzer:
-      bootstrap-servers: localhost:9092
-      consumers:
-        user-action:
-          key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-          value-deserializer: ru.practicum.ewm.kafka.serializer.UserActionDeserializer
-          group-id: analyzer-group
-          client-id: consumer-user-1
-          properties:
-            fetch.min.bytes: 1
-            max.poll.records: 100
-            enable.auto.commit: false
-            fetch.max.wait.ms: 1000
-            max.partition.fetch.bytes: 1048576
-        event-similarity:
-          key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-          value-deserializer: ru.practicum.ewm.kafka.serializer.EventSimilarityDeserializer
-          group-id: analyzer-group
-          client-id: consumer-event-1
-          properties:
-            fetch.min.bytes: 1
-            max.poll.records: 100
-            enable.auto.commit: false
-            fetch.max.wait.ms: 1000
-            max.partition.fetch.bytes: 1048576
 
 kafka:
-  topics:
-    user-actions: stats.user-actions.v1
-    events-similarity: stats.events-similarity.v1
+  analyzer:
+    bootstrap-servers: localhost:9092
+    consumers:
+      user-action:
+        topic: stats.user-actions.v1
+        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        value-deserializer: ru.practicum.ewm.kafka.serializer.UserActionDeserializer
+        group-id: analyzer-user-group
+        client-id: consumer-user-1
+        properties:
+          fetch.min.bytes: 1
+          max.poll.records: 100
+          enable.auto.commit: false
+          fetch.max.wait.ms: 1000
+          max.partition.fetch.bytes: 1048576
+      event-similarity:
+        topic: stats.events-similarity.v1
+        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        value-deserializer: ru.practicum.ewm.kafka.serializer.EventSimilarityDeserializer
+        group-id: analyzer-event-group
+        client-id: consumer-event-1
+        properties:
+          fetch.min.bytes: 1
+          max.poll.records: 100
+          enable.auto.commit: false
+          fetch.max.wait.ms: 1000
+          max.partition.fetch.bytes: 1048576
+
+user-action:
+  view: 0.4
+  register: 0.8
+  like: 1.0
 
 grpc:
   server:
@@ -57,13 +61,15 @@ grpc:
 
 logging:
   level:
-    ru.practicum: DEBUG
+    com.netflix.discovery: DEBUG
+    com.netflix.eureka: DEBUG
+    org.springframework.cloud.netflix.eureka: DEBUG
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: "health,metrics,env,beans,mappings"
   endpoint:
     health:
       show-details: always
